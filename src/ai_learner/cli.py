@@ -114,7 +114,11 @@ def cmd_list(args: argparse.Namespace) -> int:
         print(f"No sessions in {config.vault}/")
         return 0
     for name in sessions:
-        state = store.load(name)
+        try:
+            state = store.load(name)
+        except TutorError as exc:
+            print(f"{name:<32} (corrupt: {exc})", file=sys.stderr)
+            continue
         topic = state.topic or "(no topic yet)"
         print(f"{name:<32} {state.phase:<8} {topic}")
     return 0

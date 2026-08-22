@@ -63,6 +63,8 @@ class LessonRecord:
     user_answer: str = ""
     passed: bool | None = None
     feedback: str = ""
+    #: Non-empty when the verifier still flagged issues on the final draft.
+    caution: str = ""
 
     def to_dict(self) -> dict:
         return dict(self.__dict__)
@@ -145,7 +147,11 @@ class SessionStore:
         self.vault = Path(vault)
 
     def session_dir(self, name: str) -> Path:
-        return self.vault / name
+        # Normalizing here (idempotent for already-created names) means every
+        # lookup matches what `create` produced — the name typed at `start`
+        # resolves on `resume`/`status` — and a hostile name like "../../x"
+        # can never escape the vault.
+        return self.vault / slug_for_filename(name)
 
     def assets_dir(self, name: str) -> Path:
         return self.session_dir(name) / ASSETS_DIRNAME
@@ -194,11 +200,19 @@ class SessionStore:
         )
 
     def latest(self) -> str | None:
-        sessions = self.list_sessions()
-        if not sessions:
+        """Most recently touched *loadable* session (corrupt ones are skipped,
+        so one damaged state.json never bricks a bare `resume`)."""
+        loadable = []
+        for name in self.list_sessions():
+            try:
+                self.load(name)
+            except SessionError:
+                continue
+            loadable.append(name)
+        if not loadable:
             return None
         return max(
-            sessions,
+            loadable,
             key=lambda name: (self.session_dir(name) / STATE_FILENAME).stat().st_mtime,
         )
 

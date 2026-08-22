@@ -85,6 +85,13 @@ class AnthropicLLM:
                 response = self._client.beta.messages.create(**request)
             else:
                 response = self._client.messages.create(**request)
+        except TypeError as exc:
+            # The SDK raises a plain TypeError from request-header validation
+            # when no credential source can be resolved at call time.
+            raise LLMError(
+                "No API credentials found. Set ANTHROPIC_API_KEY or run "
+                "`ant auth login`."
+            ) from exc
         except anthropic.AuthenticationError as exc:
             raise LLMError(
                 "Authentication failed. Set ANTHROPIC_API_KEY or run `ant auth login`."

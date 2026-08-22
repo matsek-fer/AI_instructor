@@ -26,6 +26,17 @@ _EVENT_ATTR = re.compile(r"^on", re.IGNORECASE)
 # Numeric positional attributes checked against the viewBox.
 _POSITIONAL_ATTRS = ("x", "y", "cx", "cy", "x1", "y1", "x2", "y2")
 
+# Containers that establish their own coordinate system (nested <svg>) or
+# whose descendants use non-user-space units (gradients in objectBoundingBox
+# units, symbols placed via <use>, etc.). Descendants of these are exempt from
+# the root-viewBox bounds check; safety checks still apply everywhere.
+_OWN_COORDS_TAGS = {
+    "svg", "defs", "linearGradient", "radialGradient", "pattern",
+    "clipPath", "mask", "marker", "symbol",
+}
+
+_NON_DRAWABLE_TAGS = {"svg", "defs", "title", "desc", "style"}
+
 
 @dataclass
 class InspectionResult:
@@ -34,7 +45,13 @@ class InspectionResult:
 
 
 def inspect_svg(source: str) -> InspectionResult:
-    """Deterministic static validation of an SVG document."""
+    """Deterministic static validation of an SVG document.
+
+    Scope: well-formedness, self-containment/safety, and a rough containment
+    check on untransformed anchor coordinates in the root coordinate system.
+    Transforms, <path> data, and visual layout are deliberately out of scope
+    here — they are judged by the model's self-review pass.
+    """
     issues: list[str] = []
     try:
         root = ET.fromstring(source)
@@ -51,26 +68,36 @@ def inspect_svg(source: str) -> InspectionResult:
     if view_box is None:
         issues.append("root <svg> has no usable viewBox")
 
-    for element in root.iter():
-        local = element.tag.split("}")[-1]
-        if local in _FORBIDDEN_TAGS:
-            issues.append(f"forbidden element <{local}> (must be self-contained)")
-        for attr, value in element.attrib.items():
-            attr_local = attr.split("}")[-1]
-            if _EVENT_ATTR.match(attr_local):
-                issues.append(f"forbidden event attribute {attr_local!r}")
-            if attr_local == "href" or attr.endswith("}href"):
-                issues.append("forbidden href reference (must be self-contained)")
-        if view_box is not None:
-            issue = _check_bounds(element, local, view_box)
-            if issue:
-                issues.append(issue)
+    has_drawable = False
 
-    if view_box is not None and not any(
-        el.tag.split("}")[-1] not in ("svg", "defs", "title", "desc", "style")
-        for el in root.iter()
-        if el is not root
-    ):
+    def walk(element: ET.Element, in_root_coords: bool) -> None:
+        nonlocal has_drawable
+        for child in element:
+            local = child.tag.split("}")[-1]
+            if local in _FORBIDDEN_TAGS:
+                issues.append(f"forbidden element <{local}> (must be self-contained)")
+            for attr in child.attrib:
+                attr_local = attr.split("}")[-1]
+                if _EVENT_ATTR.match(attr_local):
+                    issues.append(f"forbidden event attribute {attr_local!r}")
+                if attr_local == "href" or attr.endswith("}href"):
+                    issues.append("forbidden href reference (must be self-contained)")
+            if local not in _NON_DRAWABLE_TAGS:
+                has_drawable = True
+            child_in_root = in_root_coords and local not in _OWN_COORDS_TAGS
+            # A transform moves the element out of the coordinate space this
+            # check understands; leave transformed subtrees to the reviewer.
+            if child.get("transform") is not None:
+                child_in_root = False
+            if child_in_root and view_box is not None:
+                issue = _check_bounds(child, local, view_box)
+                if issue:
+                    issues.append(issue)
+            walk(child, child_in_root)
+
+    walk(root, in_root_coords=True)
+
+    if view_box is not None and not has_drawable:
         issues.append("SVG has no drawable content")
 
     return InspectionResult(not issues, issues)
@@ -124,19 +151,26 @@ class SVGAgent:
         self._max_revisions = max_revisions
 
     def create(self, topic: str, concept_title: str, description: str) -> str | None:
-        """Produce a validated SVG, or None if it cannot be made sound."""
+        """Produce a validated SVG, or None if it cannot be made sound.
+
+        A drawing is embedded only when it passes BOTH the static check and
+        the model's own review. A rejected drawing that the reviewer cannot
+        correct — or a revision budget exhausted without approval — degrades
+        to prose-only teaching rather than embedding a known-bad diagram.
+        """
         svg = self._generate(topic, concept_title, description)
         for _ in range(self._max_revisions):
             static = inspect_svg(svg)
             if not static.ok:
                 svg = self._revise(description, svg, static.issues)
                 continue
-            review = self._self_review(description, svg)
-            if review is None:  # approved
+            corrected = self._self_review(description, svg)
+            if corrected is None:  # approved
                 return svg
-            svg = review
-        # Last chance: accept only if the final revision passes the static check.
-        return svg if inspect_svg(svg).ok else None
+            if corrected == svg:  # rejected, but no usable correction offered
+                return None
+            svg = corrected
+        return None
 
     def _generate(self, topic: str, concept_title: str, description: str) -> str:
         result = self._llm.structured(

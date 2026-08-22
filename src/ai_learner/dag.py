@@ -37,6 +37,9 @@ class ConceptNode:
     description: str = ""
     status: str = STATUS_PENDING
     remedial: bool = False
+    #: Completed for traversal purposes, but NOT mastered — the learner gave
+    #: up on it. Rendered distinctly so the record never fabricates mastery.
+    needs_review: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -45,6 +48,7 @@ class ConceptNode:
             "description": self.description,
             "status": self.status,
             "remedial": self.remedial,
+            "needs_review": self.needs_review,
         }
 
     @classmethod
@@ -55,6 +59,7 @@ class ConceptNode:
             description=data.get("description", ""),
             status=data.get("status", STATUS_PENDING),
             remedial=data.get("remedial", False),
+            needs_review=data.get("needs_review", False),
         )
 
 
@@ -142,6 +147,10 @@ class ConceptDAG:
         return [nid for nid in self.topological_order()
                 if self.nodes[nid].status in (STATUS_COMPLETED, STATUS_KNOWN)]
 
+    def review_ids(self) -> list[str]:
+        return [nid for nid in self.topological_order()
+                if self.nodes[nid].needs_review]
+
     def is_complete(self) -> bool:
         return self.next_pending() is None
 
@@ -179,6 +188,8 @@ class ConceptDAG:
             node = self.nodes[node_id]
             label = _mermaid_escape(node.title)
             marker = " *" if node.remedial else ""
+            if node.needs_review:
+                marker += " (review)"
             lines.append(f'    {node_id}["{label}{marker}"]')
         for node_id in order:
             for parent in sorted(self._parents[node_id]):
@@ -187,10 +198,17 @@ class ConceptDAG:
         lines.append("    classDef completed fill:#a5d8ff,stroke:#1971c2,color:#000;")
         lines.append("    classDef active fill:#ffe066,stroke:#e67700,color:#000;")
         lines.append("    classDef pending fill:#f1f3f5,stroke:#868e96,color:#000;")
+        lines.append("    classDef review fill:#ffc9c9,stroke:#c92a2a,color:#000;")
         for status in (STATUS_KNOWN, STATUS_COMPLETED, STATUS_ACTIVE, STATUS_PENDING):
-            members = [nid for nid in order if self.nodes[nid].status == status]
+            members = [
+                nid for nid in order
+                if self.nodes[nid].status == status and not self.nodes[nid].needs_review
+            ]
             if members:
                 lines.append(f"    class {','.join(members)} {status};")
+        flagged = self.review_ids()
+        if flagged:
+            lines.append(f"    class {','.join(flagged)} review;")
         return "\n".join(lines)
 
     # -- persistence ------------------------------------------------------

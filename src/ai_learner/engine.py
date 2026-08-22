@@ -106,11 +106,19 @@ class TutorEngine:
         }
         while self.state.phase != PHASE_DONE:
             handlers[self.state.phase]()
-        self.io.say(
-            f"Session complete: every concept in the plan for "
-            f"*{self.state.topic}* is mastered.\n"
-            f"Notes: {self.store.log_path(self.state.name)}"
-        )
+        flagged = self.state.dag.review_ids() if self.state.dag else []
+        if flagged:
+            titles = ", ".join(f"*{self.state.dag.nodes[nid].title}*" for nid in flagged)
+            summary = (
+                f"Session complete for *{self.state.topic}* — "
+                f"{len(flagged)} concept(s) marked for review: {titles}."
+            )
+        else:
+            summary = (
+                f"Session complete: every concept in the plan for "
+                f"*{self.state.topic}* is mastered."
+            )
+        self.io.say(f"{summary}\nNotes: {self.store.log_path(self.state.name)}")
 
     def _sync(self) -> None:
         self.store.save(self.state)
@@ -226,6 +234,13 @@ class TutorEngine:
 
     def _run_teach(self) -> None:
         state = self.state
+        # Drop lessons interrupted before the learner answered (Ctrl-C at the
+        # check question): the node is still pending and will be re-taught, so
+        # the dangling record would otherwise duplicate in the note forever.
+        state.lessons = [
+            lesson for lesson in state.lessons
+            if lesson.user_answer or lesson.passed is not None
+        ]
         while (node := state.dag.next_pending()) is not None:
             node.status = STATUS_ACTIVE
             self._sync()
@@ -248,6 +263,12 @@ class TutorEngine:
                 svg_path = state.next_asset_name(node.id)
                 self.store.write_asset(state, svg_path, svg)
 
+        caution = ""
+        if step.verification_issues:
+            caution = (
+                "Automated verification flagged unresolved issues in this step: "
+                + "; ".join(step.verification_issues)
+            )
         lesson = LessonRecord(
             node_id=node.id,
             title=node.title,
@@ -256,6 +277,7 @@ class TutorEngine:
             question=step.question,
             kind=step.kind,
             choices=step.choices,
+            caution=caution,
         )
         state.lessons.append(lesson)
         self._sync()
@@ -263,6 +285,8 @@ class TutorEngine:
         body = f"## {node.title}\n\n{step.explanation}"
         if svg_path:
             body += f"\n\n[diagram: {svg_path}]"
+        if caution:
+            body += f"\n\n> Caution: {caution}"
         self.io.say(body)
         self.io.say(f"**Check:** {self._render_question(step.question, step.choices)}")
         answer = self.io.ask(">")
@@ -286,7 +310,7 @@ class TutorEngine:
         self._attempts[node.id] += 1
 
         if self._attempts[node.id] >= MAX_ATTEMPTS_PER_NODE:
-            choice = self.io.ask(
+            choice = self.io.ask_optional(
                 f"Still working on *{node.title}* after "
                 f"{self._attempts[node.id]} attempts. Keep at it? [y/N]"
             )
@@ -294,7 +318,10 @@ class TutorEngine:
                 self.io.say(
                     f"Moving on. *{node.title}* is marked for review in the notes."
                 )
+                # Completed for traversal (next_pending must advance), but
+                # flagged so the plan and the note never claim mastery of it.
                 node.status = STATUS_COMPLETED
+                node.needs_review = True
                 self._reteach_feedback.pop(node.id, None)
                 return
 

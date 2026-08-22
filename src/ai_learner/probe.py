@@ -16,7 +16,7 @@ from .dag import slugify
 from .errors import StructuredOutputError
 from .llm import LLM
 from .session import ProbeRecord
-from .textformat import format_choices
+from .textformat import clamp_choices, format_choices
 
 
 @dataclass
@@ -116,7 +116,7 @@ class ProbeModule:
             schema=schemas.QUESTION,
         )
         kind = result.get("kind", "short_answer")
-        choices = list(result.get("choices") or []) if kind == "multiple_choice" else []
+        choices = clamp_choices(result.get("choices") or []) if kind == "multiple_choice" else []
         if kind == "multiple_choice" and len(choices) < 2:
             kind, choices = "short_answer", []
         return ProbeRecord(

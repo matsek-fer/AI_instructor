@@ -71,6 +71,10 @@ class Planner:
         if not raw_nodes:
             raise StructuredOutputError("planner returned an empty DAG")
         dag = ConceptDAG()
+        # assigned[i] is the final id of raw_nodes[i], so a node's own edges
+        # always attach to itself even when the model repeats an id. For
+        # *references* to a duplicated id, the first occurrence wins.
+        assigned: list[str] = []
         id_map: dict[str, str] = {}
         for raw in raw_nodes:
             original = raw.get("id") or raw.get("title", "")
@@ -79,7 +83,9 @@ class Planner:
             while node_id in dag.nodes:
                 node_id = f"{base}_{suffix}"
                 suffix += 1
-            id_map[original] = node_id
+            assigned.append(node_id)
+            id_map.setdefault(original, node_id)
+            id_map.setdefault(slugify(original), node_id)
             dag.add_node(
                 ConceptNode(
                     id=node_id,
@@ -87,11 +93,9 @@ class Planner:
                     description=raw.get("description", ""),
                 )
             )
-        for raw in raw_nodes:
-            original = raw.get("id") or raw.get("title", "")
-            node_id = id_map[original]
+        for raw, node_id in zip(raw_nodes, assigned):
             for prereq in raw.get("prerequisites") or []:
-                prereq_id = id_map.get(prereq, slugify(prereq))
+                prereq_id = id_map.get(prereq) or id_map.get(slugify(prereq)) or slugify(prereq)
                 if prereq_id == node_id:
                     continue  # ignore harmless self-references
                 dag.add_edge(prereq_id, node_id)  # raises DAGError on cycle/unknown

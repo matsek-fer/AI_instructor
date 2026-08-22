@@ -14,7 +14,7 @@ from . import prompts, schemas
 from .dag import ConceptDAG, ConceptNode
 from .llm import LLM
 from .subagents.factcheck import FactChecker
-from .textformat import format_choices
+from .textformat import clamp_choices, format_choices
 
 
 @dataclass
@@ -25,6 +25,9 @@ class TeachingStep:
     question: str
     kind: str
     choices: list[str]
+    #: Issues the verifier still reported on the final draft, when the retry
+    #: budget was exhausted without producing a clean step. Empty == verified.
+    verification_issues: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -47,13 +50,22 @@ class Teacher:
         dag: ConceptDAG,
         prior_attempt_feedback: str = "",
     ) -> TeachingStep:
-        """Produce one verified teaching step for `node`."""
+        """Produce one teaching step for `node`.
+
+        Every draft — including the last one — is fact-checked before being
+        returned. If the retry budget runs out with issues still open, the
+        final draft is returned with ``verification_issues`` set so the
+        caller can surface a caution instead of presenting it as verified.
+        """
         step = self._generate(topic, node, dag, prior_attempt_feedback, issues=[])
-        for _ in range(self._factcheck_max_retries):
+        for attempt in range(self._factcheck_max_retries + 1):
             issues = self._fact_checker.check_step(topic, node.title, step.explanation)
             if not issues:
-                break
-            step = self._generate(topic, node, dag, prior_attempt_feedback, issues)
+                return step
+            if attempt < self._factcheck_max_retries:
+                step = self._generate(topic, node, dag, prior_attempt_feedback, issues)
+            else:
+                step.verification_issues = issues
         return step
 
     def _generate(
@@ -90,7 +102,7 @@ class Teacher:
             schema=schemas.TEACH_STEP,
         )
         kind = result.get("kind", "short_answer")
-        choices = list(result.get("choices") or []) if kind == "multiple_choice" else []
+        choices = clamp_choices(result.get("choices") or []) if kind == "multiple_choice" else []
         if kind == "multiple_choice" and len(choices) < 2:
             kind, choices = "short_answer", []
         return TeachingStep(

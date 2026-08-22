@@ -105,8 +105,12 @@ def _plan_section(state: SessionState) -> str:
     lines.append("```")
     total = len(state.dag)
     done = len(state.dag.completed_ids())
+    flagged = state.dag.review_ids()
     lines.append("")
-    lines.append(f"**Progress:** {done}/{total} concepts")
+    progress = f"**Progress:** {done}/{total} concepts"
+    if flagged:
+        progress += f" ({len(flagged)} marked for review)"
+    lines.append(progress)
     return "\n".join(lines)
 
 
@@ -126,6 +130,9 @@ def _lessons_section(state: SessionState) -> str:
             if lesson.choices:
                 for letter, choice in zip(_CHOICE_LETTERS, lesson.choices):
                     lines.append(f"- **{letter}.** {choice}")
+        if lesson.caution:
+            lines.append("")
+            lines.append(f"> ⚠️ **Caution:** {lesson.caution}")
         if lesson.user_answer:
             lines.append("")
             verdict = "?" if lesson.passed is None else ("passed" if lesson.passed else "not yet")
@@ -136,4 +143,12 @@ def _lessons_section(state: SessionState) -> str:
 
 
 def _completion_section(state: SessionState) -> str:
-    return "## Session Complete\n\nAll concepts in the learning plan are mastered."
+    flagged = state.dag.review_ids() if state.dag is not None else []
+    if not flagged:
+        return "## Session Complete\n\nAll concepts in the learning plan are mastered."
+    titles = "\n".join(f"- {state.dag.nodes[nid].title}" for nid in flagged)
+    return (
+        "## Session Complete\n\n"
+        "All concepts in the learning plan were covered. "
+        "Still marked for review (not yet mastered):\n\n" + titles
+    )
