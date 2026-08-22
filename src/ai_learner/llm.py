@@ -77,9 +77,8 @@ class AnthropicLLM:
         if self._config.enable_fallbacks:
             request["betas"] = [_FALLBACK_BETA]
             # Scalar "default" mode: the API picks the recommended fallback
-            # model per refusal category. Sent via extra_body because older
-            # SDK typings only cover the array form of `fallbacks`.
-            request["extra_body"] = {"fallbacks": "default"}
+            # model per refusal category.
+            request["fallbacks"] = "default"
 
         try:
             if self._config.enable_fallbacks:
