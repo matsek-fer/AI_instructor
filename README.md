@@ -1,12 +1,44 @@
 # AI-Learner
 
-An autonomous AI personal tutor harness, implemented from
-[`AI_Learner_System_Spec.md`](AI_Learner_System_Spec.md). A local CLI drives a
-strict **Probe → Plan → Teach** loop against the Claude API and mirrors the
-whole session into a live-updating Markdown note (Obsidian-compatible: LaTeX,
-inline Mermaid, embedded SVG).
+An autonomous AI personal tutor, implemented from
+[`AI_Learner_System_Spec.md`](AI_Learner_System_Spec.md): a strict
+**Probe → Plan → Teach** loop that mirrors the whole session into a
+live-updating Markdown note (Obsidian-compatible: LaTeX, inline Mermaid,
+embedded SVG).
 
-## How it works
+It ships as **two interchangeable frontends** over the same session files:
+
+| Frontend | Run it | Billing | Character |
+|---|---|---|---|
+| **Claude Code skill** (`/tutor`) | `claude` in this repo, then `/tutor` | Your Claude subscription | Conversational: interrupt any time, ask about the graph, take detours |
+| **Python harness** (`ai-learner`) | `ai-learner start` | Anthropic API (per token) | Deterministic: binary search, DAG validation, and pacing enforced in code |
+
+Both write `sessions/<name>/` (`state.json`, `session.md`, `assets/`), so a
+session started in one can be resumed in the other.
+
+## Frontend 1: the `/tutor` skill (Claude Code)
+
+```bash
+cd this-repo
+claude          # your normal Claude Code session
+> /tutor
+```
+
+Keep `sessions/<name>/session.md` open in Obsidian (or a Markdown preview
+with Mermaid support) in a second window — that's the rendered UI: the
+learning-plan graph, LaTeX, and diagrams update live while the conversation
+runs in the terminal. Ask free-form questions mid-lesson ("why does node 3
+depend on 2?"); the protocol pauses, answers, and resumes.
+
+The skill lives in [`.claude/skills/tutor/`](.claude/skills/tutor/SKILL.md).
+To use it outside this repo, copy that folder to `~/.claude/skills/tutor/`.
+Diagrams are visually self-inspected: the skill renders each SVG to PNG
+(`librsvg`/`inkscape`/`imagemagick` — install one) and looks at the result
+before embedding it.
+
+## Frontend 2: the Python harness
+
+### How the harness works
 
 ```
 +-----------------------------------------------------------------+
@@ -42,7 +74,7 @@ inline Mermaid, embedded SVG).
   generates, statically validates, self-inspects, and corrects its own output
   before the diagram is embedded.
 
-## Install
+### Install
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -52,7 +84,7 @@ pip install -e ".[dev]"
 Authentication: set `ANTHROPIC_API_KEY`, or log in once with `ant auth login`
 (the SDK picks up the profile automatically).
 
-## Use
+### Use
 
 ```bash
 ai-learner start                      # begins with the Phase-1 probing question
@@ -80,7 +112,7 @@ sessions/<name>/
 `Ctrl-C` at any point saves state; `ai-learner resume` continues exactly where
 the session stopped (including mid-binary-search).
 
-## Model configuration
+### Model configuration
 
 - Model: `claude-opus-5` by default. Thinking is adaptive (on by default for
   this model); depth is controlled with `--effort` (default `high`).

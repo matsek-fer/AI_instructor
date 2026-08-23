@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .dag import ConceptDAG
-from .errors import SessionError
+from .errors import DAGError, SessionError
 
 # Session phases, in order.
 PHASE_SETUP = "setup"
@@ -187,7 +187,9 @@ class SessionStore:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
             return SessionState.from_dict(data)
-        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError, DAGError) as exc:
+            # DAGError covers structurally invalid graphs (dangling edges,
+            # cycles) in files written by other tools — corruption all the same.
             raise SessionError(f"corrupt session state in {path}: {exc}") from exc
 
     def list_sessions(self) -> list[str]:

@@ -241,6 +241,29 @@ def test_latest_skips_corrupt_sessions(tmp_path):
     assert store.latest() == "good"
 
 
+def test_dangling_dag_edge_is_corruption_not_a_crash(tmp_path):
+    """A state.json written by another tool with an edge to a missing node
+    must surface as SessionError (and be skipped by latest()), not DAGError."""
+    import json
+    import pytest
+    from ai_learner.errors import SessionError
+
+    store = SessionStore(tmp_path)
+    state = store.create("edgy")
+    path = store.session_dir(state.name) / "state.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["dag"] = {
+        "nodes": [{"id": "a", "title": "A", "description": "",
+                   "status": "pending", "remedial": False, "needs_review": False}],
+        "edges": [["a", "ghost"]],
+    }
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(SessionError, match="corrupt"):
+        store.load("edgy")
+    store.create("healthy")
+    assert store.latest() == "healthy"
+
+
 # -- engine: dangling lessons pruned on resume -----------------------------
 
 def test_dangling_unanswered_lesson_is_pruned_on_teach_resume(tmp_path):
