@@ -288,3 +288,29 @@ def test_probe_choices_clamped_to_ten():
     llm = FakeLLM([{"question": "Q", "kind": "multiple_choice", "choices": many}])
     record = ProbeModule(llm).ask_question("t", "", {"id": "c", "title": "C"}, [])
     assert len(record.choices) == 10
+
+
+# -- choice order must not signal the answer -------------------------------
+
+def test_choices_are_shuffled_so_position_carries_no_signal():
+    """Models list the correct answer first; prepare_choices must decorrelate
+    position from correctness by shuffling."""
+    from ai_learner.textformat import prepare_choices
+
+    first_positions = set()
+    for _ in range(80):
+        _, choices = prepare_choices(["correct", "d1", "d2", "d3"], "multiple_choice")
+        first_positions.add(choices[0])
+    # P(the first-listed option stays first in all 80 shuffles) = (1/4)^80.
+    assert len(first_positions) > 1
+
+
+def test_clamp_happens_before_shuffle_so_first_option_survives():
+    """The first-listed (likely correct) option must never be clamped away."""
+    from ai_learner.textformat import prepare_choices
+
+    many = ["correct"] + [f"d{i}" for i in range(14)]
+    for _ in range(30):
+        _, choices = prepare_choices(many, "multiple_choice")
+        assert "correct" in choices
+        assert len(choices) == 10

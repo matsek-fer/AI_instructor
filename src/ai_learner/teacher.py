@@ -14,7 +14,7 @@ from . import prompts, schemas
 from .dag import ConceptDAG, ConceptNode
 from .llm import LLM
 from .subagents.factcheck import FactChecker
-from .textformat import clamp_choices, format_choices
+from .textformat import format_choices, prepare_choices
 
 
 @dataclass
@@ -101,10 +101,7 @@ class Teacher:
             prompt="\n".join(prompt_parts),
             schema=schemas.TEACH_STEP,
         )
-        kind = result.get("kind", "short_answer")
-        choices = clamp_choices(result.get("choices") or []) if kind == "multiple_choice" else []
-        if kind == "multiple_choice" and len(choices) < 2:
-            kind, choices = "short_answer", []
+        kind, choices = prepare_choices(result.get("choices"), result.get("kind", "short_answer"))
         return TeachingStep(
             explanation=result.get("explanation", ""),
             needs_visual=bool(result.get("needs_visual")),

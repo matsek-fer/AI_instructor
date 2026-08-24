@@ -71,7 +71,7 @@ def test_ask_question_multiple_choice():
         "arithmetic", "", {"id": "add", "title": "Addition", "description": ""}, []
     )
     assert record.kind == "multiple_choice"
-    assert record.choices == ["3", "4", "5"]
+    assert sorted(record.choices) == ["3", "4", "5"]  # order is shuffled
     assert record.concept_id == "add"
 
 

@@ -67,7 +67,14 @@ Then:
    multiple choice with plausible distractors — present it with the
    AskUserQuestion tool; use free-text short answer when recognition would
    give the answer away.
-4. Grade understanding, not wording: equivalent formulations and notation
+4. **Choice ordering — position must never signal the answer.** You will
+   naturally draft the correct option first; do not leave it there. Reorder
+   every option list into a content-neutral order (numeric ascending,
+   alphabetical, or a natural logical scale). If that order itself hints at
+   the answer, run `shuf -i 1-<n> -n 1` and put the correct option at that
+   position. This applies to every multiple-choice question in the session,
+   assessments included.
+5. Grade understanding, not wording: equivalent formulations and notation
    slips count as correct; "I don't know" is incorrect. One terse sentence
    of feedback after each answer.
 
@@ -116,9 +123,10 @@ Walk the DAG in topological order. For each node:
      carefully instead and continue.
    - Embed with `![<title>](assets/NNN_<slug>.svg)` in the note.
 4. **Assess — mandatory.** End every step with one targeted question
-   testing this step alone (AskUserQuestion for multiple choice). Grade
-   generously on understanding. Record answer, verdict, and feedback in the
-   note.
+   testing this step alone (AskUserQuestion for multiple choice, with the
+   Phase-1 choice-ordering rule — position must never signal the answer).
+   Grade generously on understanding. Record answer, verdict, and feedback
+   in the note.
 5. **Recalibrate on failure:**
    - Gap is a missing smaller concept → splice 1–2 remedial nodes into the
      DAG as new prerequisites of this node (mark them `*` in the note),
