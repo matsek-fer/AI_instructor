@@ -1,0 +1,166 @@
+{
+  "name": "group-nonsimplicity",
+  "created_at": "2026-08-23 09:08 UTC",
+  "phase": "done",
+  "topic": "Proving non-simplicity via coset actions",
+  "background": "Actively studying group theory; working on: G has an element of order 24 and a subgroup of index 12, prove G is not simple.",
+  "ladder": [
+    {"id": "element_order", "title": "Order of an element", "description": "Order of an element, cyclic subgroups, Lagrange's theorem."},
+    {"id": "cosets_index", "title": "Cosets and index", "description": "Left cosets of a subgroup, the index [G:H], coset partition."},
+    {"id": "normal_simple", "title": "Normal subgroups and simplicity", "description": "Normal subgroups, quotient groups, definition of a simple group."},
+    {"id": "hom_kernel", "title": "Homomorphisms and kernels", "description": "Group homomorphisms, kernels, kernel is normal, first isomorphism theorem."},
+    {"id": "perm_order", "title": "Order of a permutation", "description": "Cycle decomposition in S_n; order of a permutation is the lcm of its cycle lengths."},
+    {"id": "sign_alternating", "title": "Sign and the alternating group", "description": "Parity of a permutation, A_n, index-2 subgroups are normal."},
+    {"id": "group_actions", "title": "Group actions", "description": "Actions of G on a set, the permutation representation G -> Sym(X), kernel of an action."},
+    {"id": "coset_action", "title": "Action on cosets", "description": "G acts on G/H by left multiplication; homomorphism G -> S_[G:H]; kernel is the core of H."},
+    {"id": "nonsimplicity_embedding", "title": "Non-simplicity via embedding", "description": "A simple group with a subgroup of index n embeds in S_n (even A_n); contradictions from element orders."}
+  ],
+  "probe_records": [
+    {
+      "concept_id": "perm_order",
+      "concept_title": "Order of a permutation",
+      "question": "In $S_{10}$, what is the order of the permutation $\\sigma = (1\\,2\\,3\\,4)(5\\,6\\,7\\,8\\,9\\,10)$ (a 4-cycle and a 6-cycle, disjoint)?",
+      "kind": "multiple_choice",
+      "choices": ["24 (the product 4*6)", "12 (the lcm of 4 and 6)", "10 (the sum 4+6)", "6 (the longest cycle length)"],
+      "user_answer": "B",
+      "correct": true,
+      "feedback": "Right: disjoint cycles commute, so the order is $\\mathrm{lcm}(4,6)=12$."
+    },
+    {
+      "concept_id": "group_actions",
+      "concept_title": "Group actions",
+      "question": "A group $G$ acts on a set $X$, giving a homomorphism $\\varphi: G \\to \\mathrm{Sym}(X)$. What is $\\ker \\varphi$?",
+      "kind": "multiple_choice",
+      "choices": ["$\\{g : g\\cdot x = x \\text{ for all } x\\}$", "$\\{g : g\\cdot x = x \\text{ for some } x\\}$", "$\\{x : g\\cdot x = x \\text{ for all } g\\}$", "$\\mathrm{Stab}(x)$ for a chosen $x$"],
+      "user_answer": "A",
+      "correct": true,
+      "feedback": "Right: the kernel is exactly the elements that act trivially on every point of $X$."
+    },
+    {
+      "concept_id": "coset_action",
+      "concept_title": "Action on cosets",
+      "question": "Let $H \\le G$ with $[G:H] = n$. $G$ acts on the left cosets $G/H$ by left multiplication, giving $\\varphi: G \\to S_n$. Which statement about $\\ker \\varphi$ is always true?",
+      "kind": "multiple_choice",
+      "choices": ["$\\ker\\varphi$ is the largest normal subgroup of $G$ contained in $H$", "$\\ker\\varphi = H$", "$\\ker\\varphi = \\{e\\}$, so $G$ always embeds in $S_n$", "$\\ker\\varphi = Z(G)$"],
+      "user_answer": "B",
+      "correct": false,
+      "feedback": "Not quite: $H$ fixes $eH$ but generally moves other cosets; the kernel is $\\bigcap_g gHg^{-1}$, the core of $H$ — the largest normal subgroup of $G$ inside $H$, equal to $H$ only when $H \\trianglelefteq G$."
+    }
+  ],
+  "boundary_index": 7,
+  "fact_check_notes": "Verifier confirmed all 7 planned concepts: coset action is well-defined and transitive; kernel = core of H (largest normal subgroup inside H); simple G embeds in S_n, and in A_n once |G| > 2; the unique cycle type of order 24 in S_12 is (8,3,1), which is odd, so A_12 has no element of order 24; the assembled chain is a complete, gap-free proof, valid for infinite G as well.",
+  "dag": {
+    "nodes": [
+      {"id": "coset_action_hom", "title": "The coset action homomorphism", "description": "G acts on the left cosets G/H by left multiplication; well-defined and transitive; yields a homomorphism phi: G -> S_n where n = [G:H].", "status": "completed", "remedial": false, "needs_review": false},
+      {"id": "core_kernel", "title": "Kernel = core of H", "description": "ker phi is the intersection of all conjugates of H: the largest normal subgroup of G contained in H, hence a proper normal subgroup candidate.", "status": "completed", "remedial": false, "needs_review": false},
+      {"id": "simple_embedding", "title": "Simple groups embed in S_n", "description": "If G is simple and H is proper of index n, the kernel must be trivial, so phi embeds G into S_n.", "status": "completed", "remedial": false, "needs_review": false},
+      {"id": "into_alternating", "title": "Pushing into A_n", "description": "For simple G with |G| > 2, the image must land in A_n, via the sign homomorphism.", "status": "completed", "remedial": false, "needs_review": false},
+      {"id": "order24_cycle_types", "title": "Order-24 elements of S_12", "description": "Order = lcm of cycle lengths; the only cycle type in S_12 with order 24 is (8,3,1).", "status": "completed", "remedial": false, "needs_review": false},
+      {"id": "parity_obstruction", "title": "The parity obstruction", "description": "Type (8,3,1) is an odd permutation, so A_12 contains no element of order 24.", "status": "completed", "remedial": false, "needs_review": false},
+      {"id": "proof_assembly", "title": "Assembling the proof", "description": "Combine the embedding into A_12 with the missing order-24 element to conclude G is not simple.", "status": "completed", "remedial": false, "needs_review": false}
+    ],
+    "edges": [
+      ["coset_action_hom", "core_kernel"],
+      ["core_kernel", "simple_embedding"],
+      ["simple_embedding", "into_alternating"],
+      ["into_alternating", "proof_assembly"],
+      ["order24_cycle_types", "parity_obstruction"],
+      ["parity_obstruction", "proof_assembly"]
+    ]
+  },
+  "lessons": [
+    {
+      "node_id": "coset_action_hom",
+      "title": "The coset action homomorphism",
+      "explanation": "Let $H \\le G$ with $[G:H] = n$, and let $X = G/H$ be the set of left cosets ($n$ elements). $G$ acts on $X$ by left multiplication: $g\\cdot(xH) = (gx)H$. Well-defined: $xH = yH$ means $y = xh$, $h \\in H$, so $(gy)H = (gxh)H = (gx)H$. Action axioms follow from associativity. An action is the same as a homomorphism into $\\mathrm{Sym}(X)$, so we get $\\varphi: G \\to S_n$; the action is transitive ($yx^{-1}$ sends $xH$ to $yH$). Punchline: a subgroup of index $n$ alone manufactures a homomorphism $G \\to S_n$, whose kernel is normal.",
+      "svg_path": null,
+      "question": "In the coset action $g\\cdot(xH) = (gx)H$, why is the result independent of the chosen representative $x$?",
+      "kind": "multiple_choice",
+      "choices": ["If $xH = yH$ then $y = xh$ with $h \\in H$, and $(gxh)H = (gx)H$ since $h \\in H$", "Because $gH = Hg$ for all $g$", "Because $H$ is a normal subgroup of $G$", "Because all cosets have the same cardinality"],
+      "user_answer": "A",
+      "passed": true,
+      "feedback": "Correct: $h$ absorbs into $H$ on the right, which works for any subgroup — normality is never needed.",
+      "caution": ""
+    },
+    {
+      "node_id": "core_kernel",
+      "title": "Kernel = core of H",
+      "explanation": "$g \\in \\ker\\varphi$ iff $(gx)H = xH$ for all $x$, and $(gx)H = xH \\iff x^{-1}gx \\in H \\iff g \\in xHx^{-1}$. So $\\ker\\varphi = \\bigcap_x xHx^{-1} = \\mathrm{Core}_G(H)$. Formal consequences: it lies inside $H$ (take $x=e$), and it is the largest normal subgroup of $G$ contained in $H$ (normal as a kernel; any $N \\trianglelefteq G$ inside $H$ satisfies $N = xNx^{-1} \\subseteq xHx^{-1}$). Payoff: for proper $H$, $\\ker\\varphi \\subseteq H \\subsetneq G$, so the kernel is automatically a normal subgroup $\\neq G$; only triviality remains in question.",
+      "svg_path": null,
+      "question": "Let $G = S_3$ and $H = \\langle(1\\,2)\\rangle$ (index 3). What is $\\mathrm{Core}_G(H) = \\bigcap_x xHx^{-1}$?",
+      "kind": "multiple_choice",
+      "choices": ["$\\{e\\}$", "$H$ itself", "$A_3$", "$S_3$"],
+      "user_answer": "A",
+      "passed": true,
+      "feedback": "Correct: the conjugates $\\langle(1\\,2)\\rangle, \\langle(1\\,3)\\rangle, \\langle(2\\,3)\\rangle$ intersect trivially, so the coset action embeds $S_3$ into $S_3$.",
+      "caution": ""
+    },
+    {
+      "node_id": "simple_embedding",
+      "title": "Simple groups embed in S_n",
+      "explanation": "Suppose $G$ is simple and $H \\le G$ is proper of finite index $n > 1$. $\\ker\\varphi \\trianglelefteq G$, so simplicity leaves $\\ker\\varphi = G$ or $\\{e\\}$. The first is impossible since $\\ker\\varphi = \\mathrm{Core}_G(H) \\subseteq H \\subsetneq G$. Hence $\\varphi$ is injective and $G$ is isomorphic to a subgroup of $S_n$. Consequences: element orders in $G$ must occur in $S_n$ (injectivity preserves orders), and for finite $G$, $|G| \\mid n!$. Either can yield a contradiction, refuting simplicity.",
+      "svg_path": null,
+      "question": "Can a simple group of order 60 have a subgroup of index 4?",
+      "kind": "multiple_choice",
+      "choices": ["No — the coset action would embed it into $S_4$, which has only $24 < 60$ elements", "Yes — Lagrange allows a subgroup of order 15, and that is the only constraint", "No — a simple group has no proper nontrivial subgroups at all", "Yes — the kernel of the coset action could be all of $G$, avoiding the embedding"],
+      "user_answer": "A",
+      "passed": true,
+      "feedback": "Correct: $60 \\nmid 24$, so no injection into $S_4$ exists; this is why $A_5$ has no subgroup of order 15.",
+      "caution": ""
+    },
+    {
+      "node_id": "into_alternating",
+      "title": "Pushing into A_n",
+      "explanation": "Compose with the sign homomorphism: $\\psi = \\mathrm{sgn}\\circ\\varphi: G \\to \\{\\pm 1\\}$. $\\ker\\psi \\trianglelefteq G$, so simplicity gives $\\ker\\psi = G$ or $\\{e\\}$. If $\\{e\\}$, then $\\psi$ is injective and $|G| \\le 2$ — impossible since $24 \\mid |G|$. Hence $\\ker\\psi = G$: every $\\varphi(g)$ is even, i.e. $\\varphi(G) \\subseteq A_n$. Upgrade: a simple group with $|G| > 2$ and a proper subgroup of index $n$ embeds into $A_n$ — parity constraints on cycle types now apply.",
+      "svg_path": null,
+      "question": "In the argument that a simple $G$ with $|G| > 2$ lands inside $A_n$, what exactly does simplicity contribute?",
+      "kind": "multiple_choice",
+      "choices": ["$\\ker(\\mathrm{sgn}\\circ\\varphi)$ is normal, hence $\\{e\\}$ or $G$; the first forces $|G| \\le 2$, so it is $G$ — every $\\varphi(g)$ is even", "Simplicity implies $G$ has no elements of order 2", "Simplicity implies $G \\cong A_n$", "$A_n$ is the only proper normal subgroup of $S_n$, and a simple group must map into a normal subgroup"],
+      "user_answer": "A",
+      "passed": true,
+      "feedback": "Correct: simplicity enters only through the kernel dichotomy applied to $\\mathrm{sgn}\\circ\\varphi$.",
+      "caution": ""
+    },
+    {
+      "node_id": "order24_cycle_types",
+      "title": "Order-24 elements of S_12",
+      "explanation": "$\\mathrm{ord}(\\sigma) = \\mathrm{lcm}$ of cycle lengths (a partition of 12). For $24 = 2^3\\cdot 3$: the power of 2 in an lcm is the max over the lengths, so a single length divisible by 8 is forced, and the only such length $\\le 12$ is 8 — exactly one 8-cycle. The remaining 4 points must supply the factor 3; among partitions of 4 only $\\{3,1\\}$ contains a multiple of 3, and $\\mathrm{lcm}(8,3,1)=24$. So the unique cycle type of order 24 in $S_{12}$ is $(8,3,1)$. In particular $S_{12}$ does contain order-24 elements — the $A_{12}$ refinement is essential.",
+      "svg_path": null,
+      "question": "Does $S_{12}$ contain an element of order 40?",
+      "kind": "multiple_choice",
+      "choices": ["No — $40 = 2^3\\cdot 5$ forces an 8-cycle, leaving 4 points, which cannot host a cycle of length divisible by 5", "Yes — cycle type $(8,5)$ works", "Yes — cycle type $(10,2)$ works", "No — because 40 does not divide $12!$"],
+      "user_answer": "A",
+      "passed": true,
+      "feedback": "Correct: the 8-cycle is forced and 4 leftover points cannot supply a factor of 5. (B needs 13 points; C has lcm 10; D's premise is false — $40 \\mid 12!$.)",
+      "caution": ""
+    },
+    {
+      "node_id": "parity_obstruction",
+      "title": "The parity obstruction",
+      "explanation": "A $k$-cycle factors into $k-1$ transpositions, so $\\mathrm{sgn}(k\\text{-cycle}) = (-1)^{k-1}$: even-length cycles are odd permutations, odd-length cycles are even. For the unique order-24 type $(8,3,1)$: $\\mathrm{sgn} = (-1)^7(-1)^2(-1)^0 = -1$. Every element of order 24 in $S_{12}$ is odd, so $A_{12}$ contains no element of order 24.",
+      "svg_path": null,
+      "question": "What is the parity of an element of order 24 in $S_{12}$?",
+      "kind": "multiple_choice",
+      "choices": ["Odd — the type must be $(8,3,1)$; the 8-cycle contributes $(-1)^7 = -1$, the 3-cycle and fixed point are even", "Even — 8 is an even number, so an 8-cycle is an even permutation", "Even — 24 is an even order, and elements of even order are always even permutations", "It depends on which element of order 24 you pick"],
+      "user_answer": "A",
+      "passed": true,
+      "feedback": "Correct: even-length cycles are odd permutations — the $(-1)^{k-1}$ shift is exactly what B misses, and uniqueness of the type kills D.",
+      "caution": ""
+    },
+    {
+      "node_id": "proof_assembly",
+      "title": "Assembling the proof",
+      "explanation": "Theorem: if $G$ has an element $g$ of order 24 and a subgroup $H$ of index 12, $G$ is not simple. Proof: assume simple. The coset action gives $\\varphi: G \\to S_{12}$; $\\ker\\varphi = \\mathrm{Core}_G(H) \\subseteq H \\subsetneq G$ forces $\\ker\\varphi = \\{e\\}$; $|G| \\ge 24 > 2$ and the kernel dichotomy for $\\mathrm{sgn}\\circ\\varphi$ force $\\varphi(G) \\subseteq A_{12}$; then $\\varphi(g) \\in A_{12}$ has order 24, but the unique order-24 type $(8,3,1)$ is odd — contradiction. Constructive coda: either $\\mathrm{Core}_G(H) \\neq \\{e\\}$ (nontrivial proper normal), or the core is trivial and $\\ker(\\mathrm{sgn}\\circ\\varphi)$ is normal of index 2, nontrivial since $|G| \\ge 24$. Finiteness of $G$ is never assumed — only the index matters.",
+      "svg_path": null,
+      "question": "Same technique, new data: $G$ has an element of order 8 and a subgroup of index 6. Does the method show $G$ is not simple?",
+      "kind": "multiple_choice",
+      "choices": ["Yes, even more easily — $S_6$ has no element of order 8 at all, so the embedding into $S_6$ already yields the contradiction; parity not needed", "Yes, but only via the $A_6$ parity refinement", "No — the technique requires the index to be at least 12", "No — because 8 does not divide $6!$"],
+      "user_answer": "A",
+      "passed": true,
+      "feedback": "Correct: possible orders in $S_6$ are $\\{1,2,3,4,5,6\\}$, so the contradiction arrives at the embedding stage; and $8 \\mid 720$, so D's premise is false.",
+      "caution": ""
+    }
+  ],
+  "asset_counter": 0,
+  "search": {"low": 7, "high": 6}
+}
