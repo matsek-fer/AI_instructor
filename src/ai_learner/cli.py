@@ -88,6 +88,9 @@ def cmd_resume(args: argparse.Namespace) -> int:
         return 1
     state = store.load(name)
     if state.phase == PHASE_DONE:
+        # Backfill for sessions finished before experience emission existed;
+        # a no-op when the file is already there (it is never overwritten).
+        store.write_experience(state)
         print(f"Session {name!r} is already complete: {store.log_path(name)}")
         return 0
     print(f"Resuming session {name!r} (phase: {state.phase}).\n")

@@ -148,6 +148,14 @@ def test_full_session(tmp_path):
         assert asset.exists()
         assert asset.read_text(encoding="utf-8").startswith("<svg")
 
+    # Completion emits the experience bundle next to the note.
+    experience = store.experience_path("e2e")
+    assert experience.exists()
+    text = experience.read_text(encoding="utf-8")
+    assert text.startswith("---\n")
+    assert "tool: tutor" in text
+    assert 'session_ref: "e2e"' in text
+
     # All model calls consumed exactly.
     assert llm.responses == []
 

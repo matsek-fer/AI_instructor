@@ -2,14 +2,18 @@
 
 Shared with the `ai-learner` Python harness (`src/ai_learner/session.py`,
 `markdown_log.py`) — keep these shapes exact so either frontend can resume a
-session the other started. Unknown extra keys are tolerated on load but
-dropped on the harness's next save, so don't rely on them for anything you
-can't recompute; the one extra key this skill uses is `search` (below).
+session the other started. **Unknown keys are preserved verbatim** at every
+level — top-level state, probe/lesson records, the dag and its nodes — and
+round-tripped on save, so tools can annotate state without their work being
+erased. Prefixing third-party keys with `x_` is recommended (it is what the
+matsek spec reserves for extensions), but all unknown keys are preserved
+either way. The one extra key this skill itself uses is `search` (below).
 
 ## state.json
 
 ```json
 {
+  "schema_version": "1.0",
   "name": "calculus",
   "created_at": "2026-08-23 10:00 UTC",
   "phase": "probe",
@@ -62,10 +66,13 @@ can't recompute; the one extra key this skill uses is `search` (below).
 ```
 
 Rules:
+- `schema_version`: write `"1.0"` on every save. A file without it is a
+  pre-1.0 state: load it normally and stamp the field on the next save.
 - `phase` ∈ `setup | probe | plan | teach | done`.
 - `name` is the slug of the session directory (lowercase, hyphens).
-- Record objects must carry **exactly** the keys shown (the harness
-  constructs them positionally); use `""`/`null`/`[]` for empty, never omit.
+- Record objects must carry every key shown; use `""`/`null`/`[]` for
+  empty, never omit. Keys beyond these are fine and survive a save (see
+  above), but nothing may repurpose a known key.
 - `dag.edges` entries are `[prerequisite_id, dependent_id]`. **Every id in
   an edge must exist in `dag.nodes`**, and the graph must stay acyclic — the
   harness refuses to load a file that violates either.
@@ -85,6 +92,37 @@ Rules:
   from `low = 0`, `high = len(ladder) - 1`, then for each graded record in
   `probe_records` in order, find its concept's index `i` in `ladder` and
   apply `correct ? low = i + 1 : high = i - 1`.
+
+## experience.md
+
+Written once into the session directory when the session reaches
+`phase: "done"` — the matsek experience bundle the member can later choose
+to submit. **Never overwrite an existing `experience.md`**: the member may
+have edited it. The harness emits it without `rating`; the skill frontend
+asks for one (see SKILL.md) and includes it.
+
+```markdown
+---
+schema_version: "1.0"
+type: experience
+tool: tutor
+tool_version: "0.1.0"
+duration_minutes: 85
+rating: 4
+consent_public: false
+session_ref: "calculus"
+---
+
+Free text: what happened, friction, suggested improvements.
+```
+
+- `tool` is always `tutor`; `tool_version` is the `ai_learner` package
+  version.
+- `duration_minutes`: whole minutes from `created_at` to session end; omit
+  when not derivable.
+- `rating` (1–5) is optional — omit rather than invent.
+- `consent_public` starts `false`; only the member flips it.
+- `session_ref` is the session slug (`name` in state.json).
 
 ## session.md
 

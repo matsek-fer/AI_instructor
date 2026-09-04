@@ -9,12 +9,17 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import __version__
 from .dag import ConceptDAG
 from .errors import DAGError, SessionError
+
+# Version of the on-disk state.json format. Files written before the field
+# existed are accepted on load (pre-1.0) and stamped on their next save.
+STATE_SCHEMA_VERSION = "1.0"
 
 # Session phases, in order.
 PHASE_SETUP = "setup"
@@ -26,6 +31,24 @@ PHASE_DONE = "done"
 STATE_FILENAME = "state.json"
 LOG_FILENAME = "session.md"
 ASSETS_DIRNAME = "assets"
+EXPERIENCE_FILENAME = "experience.md"
+
+# `created_at` format; also what experience duration is derived from.
+CREATED_AT_FORMAT = "%Y-%m-%d %H:%M UTC"
+
+
+def _split_extras(cls, data: dict) -> tuple[dict, dict]:
+    """Separate the keys a dataclass declares from everything else.
+
+    Unknown keys — a co-frontend's bookkeeping, a third-party tool's
+    annotations — are captured so `to_dict` can round-trip them verbatim:
+    saving must never erase another tool's work.
+    """
+    known = {f.name for f in fields(cls)} - {"extras"}
+    return (
+        {k: v for k, v in data.items() if k in known},
+        {k: v for k, v in data.items() if k not in known},
+    )
 
 
 @dataclass
@@ -40,13 +63,18 @@ class ProbeRecord:
     user_answer: str = ""
     correct: bool | None = None
     feedback: str = ""
+    #: Unknown keys from other tools, preserved verbatim across save/load.
+    extras: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
-        return dict(self.__dict__)
+        data = {k: v for k, v in self.__dict__.items() if k != "extras"}
+        data.update(self.extras)
+        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "ProbeRecord":
-        return cls(**data)
+        known, extras = _split_extras(cls, data)
+        return cls(**known, extras=extras)
 
 
 @dataclass
@@ -65,13 +93,18 @@ class LessonRecord:
     feedback: str = ""
     #: Non-empty when the verifier still flagged issues on the final draft.
     caution: str = ""
+    #: Unknown keys from other tools, preserved verbatim across save/load.
+    extras: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
-        return dict(self.__dict__)
+        data = {k: v for k, v in self.__dict__.items() if k != "extras"}
+        data.update(self.extras)
+        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "LessonRecord":
-        return cls(**data)
+        known, extras = _split_extras(cls, data)
+        return cls(**known, extras=extras)
 
 
 @dataclass
@@ -91,10 +124,12 @@ class SessionState:
     dag: ConceptDAG | None = None
     lessons: list[LessonRecord] = field(default_factory=list)
     asset_counter: int = 0
+    #: Unknown top-level keys from other tools, preserved verbatim.
+    extras: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.created_at:
-            self.created_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+            self.created_at = datetime.now(timezone.utc).strftime(CREATED_AT_FORMAT)
 
     def next_asset_name(self, stem: str) -> str:
         """A fresh, unique filename (relative to the session dir) for an SVG."""
@@ -102,7 +137,8 @@ class SessionState:
         return f"{ASSETS_DIRNAME}/{self.asset_counter:03d}_{slug_for_filename(stem)}.svg"
 
     def to_dict(self) -> dict:
-        return {
+        data = {
+            "schema_version": STATE_SCHEMA_VERSION,
             "name": self.name,
             "created_at": self.created_at,
             "phase": self.phase,
@@ -116,9 +152,15 @@ class SessionState:
             "lessons": [lesson.to_dict() for lesson in self.lessons],
             "asset_counter": self.asset_counter,
         }
+        data.update(self.extras)
+        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "SessionState":
+        _, extras = _split_extras(cls, data)
+        # The file's schema_version is metadata, not state: absent in pre-1.0
+        # files, and always restamped with the current version on save.
+        extras.pop("schema_version", None)
         return cls(
             name=data["name"],
             created_at=data.get("created_at", ""),
@@ -132,7 +174,21 @@ class SessionState:
             dag=ConceptDAG.from_dict(data["dag"]) if data.get("dag") else None,
             lessons=[LessonRecord.from_dict(r) for r in data.get("lessons", [])],
             asset_counter=data.get("asset_counter", 0),
+            extras=extras,
         )
+
+
+def _minutes_since(created_at: str) -> int | None:
+    """Whole minutes from `created_at` to now, or None when not derivable
+    (unparseable timestamp, a clock that went backwards, or a sub-minute
+    session — the experience schema floors duration_minutes at 1, so zero
+    means "omit", never "0")."""
+    try:
+        start = datetime.strptime(created_at, CREATED_AT_FORMAT).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    minutes = int((datetime.now(timezone.utc) - start).total_seconds() // 60)
+    return minutes if minutes >= 1 else None
 
 
 def slug_for_filename(text: str) -> str:
@@ -158,6 +214,9 @@ class SessionStore:
 
     def log_path(self, name: str) -> Path:
         return self.session_dir(name) / LOG_FILENAME
+
+    def experience_path(self, name: str) -> Path:
+        return self.session_dir(name) / EXPERIENCE_FILENAME
 
     def create(self, name: str | None = None) -> SessionState:
         if not name:
@@ -217,6 +276,54 @@ class SessionStore:
             loadable,
             key=lambda name: (self.session_dir(name) / STATE_FILENAME).stat().st_mtime,
         )
+
+    def write_experience(self, state: SessionState) -> Path | None:
+        """Emit the ecosystem experience bundle for a finished session.
+
+        Returns the path when a file was written, or None when one already
+        exists: the member may have edited it, so it is never overwritten.
+        `rating` is deliberately absent — the harness cannot ask for one
+        cheaply mid-flow; the member (or the skill frontend) adds it.
+        """
+        path = self.experience_path(state.name)
+        if path.exists():
+            return None
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        lines = [
+            "---",
+            'schema_version: "1.0"',
+            "type: experience",
+            "tool: tutor",
+            f'tool_version: "{__version__}"',
+        ]
+        minutes = _minutes_since(state.created_at)
+        if minutes is not None:
+            lines.append(f"duration_minutes: {minutes}")
+        lines += [
+            "consent_public: false",
+            # Quoted so a slug like "true" or "42" stays a YAML string.
+            f'session_ref: "{state.name}"',
+            "---",
+            "",
+        ]
+
+        taught = len(state.lessons)
+        flagged = len(state.dag.review_ids()) if state.dag is not None else 0
+        summary = f"Tutoring session on {state.topic or state.name}: {taught} teaching step(s)"
+        if flagged:
+            summary += f", {flagged} concept(s) left marked for review"
+        summary += "."
+        lines += [
+            summary,
+            "",
+            "<!-- Written by the tutor harness. Add your own notes below —",
+            "what happened, what was confusing, what could be better. This file",
+            "stays local unless you choose to submit it. -->",
+            "",
+        ]
+        path.write_text("\n".join(lines), encoding="utf-8")
+        return path
 
     def write_asset(self, state: SessionState, relative_path: str, content: str) -> Path:
         path = self.session_dir(state.name) / relative_path

@@ -106,6 +106,10 @@ class TutorEngine:
         }
         while self.state.phase != PHASE_DONE:
             handlers[self.state.phase]()
+        # The experience bundle is what the member can later submit to the
+        # library; write it the moment the session completes, while the
+        # timestamps it derives duration from are honest.
+        self.store.write_experience(self.state)
         flagged = self.state.dag.review_ids() if self.state.dag else []
         if flagged:
             titles = ", ".join(f"*{self.state.dag.nodes[nid].title}*" for nid in flagged)

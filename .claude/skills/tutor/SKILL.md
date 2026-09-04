@@ -22,9 +22,10 @@ Sessions live in `sessions/<slug>/` in the project root:
 
 ```
 sessions/<slug>/
-├── state.json     # machine state (format: reference/state-format.md)
-├── session.md     # the live note the learner watches in Obsidian
-└── assets/        # SVG diagrams
+├── state.json      # machine state (format: reference/state-format.md)
+├── session.md      # the live note the learner watches in Obsidian
+├── experience.md   # written at session end (format: reference/state-format.md)
+└── assets/         # SVG diagrams
 ```
 
 Read `reference/state-format.md` before writing either file — the format is
@@ -153,3 +154,17 @@ are free.
 When every node is completed: update the note's completion section and give
 a one-paragraph summary. Be honest — if any nodes are `needs_review`, say
 "covered, with N concepts marked for review", not "mastered".
+
+Then run the exit interview — two quick questions, nothing more:
+
+1. Rate the session 1–5 (AskUserQuestion works well here).
+2. What was confusing, or what could be better? (free text; "nothing" is a
+   fine answer)
+
+Write `sessions/<slug>/experience.md` in the format in
+`reference/state-format.md`, including `rating` and the member's remarks in
+the body. If the file already exists (the Python harness may have emitted
+one), keep everything already in it — add the rating and remarks, never
+discard the member's own edits. Finally, tell the member in one sentence:
+the file exists, it stays local, and it is only ever shared if they choose
+to submit it.

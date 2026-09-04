@@ -9,7 +9,7 @@ prerequisite: teaching order is always a topological order of this graph.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Iterator
 
 from .errors import DAGError
@@ -40,9 +40,11 @@ class ConceptNode:
     #: Completed for traversal purposes, but NOT mastered — the learner gave
     #: up on it. Rendered distinctly so the record never fabricates mastery.
     needs_review: bool = False
+    #: Unknown keys from other tools, preserved verbatim across save/load.
+    extras: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "id": self.id,
             "title": self.title,
             "description": self.description,
@@ -50,6 +52,8 @@ class ConceptNode:
             "remedial": self.remedial,
             "needs_review": self.needs_review,
         }
+        data.update(self.extras)
+        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "ConceptNode":
@@ -60,6 +64,8 @@ class ConceptNode:
             status=data.get("status", STATUS_PENDING),
             remedial=data.get("remedial", False),
             needs_review=data.get("needs_review", False),
+            extras={k: v for k, v in data.items()
+                    if k not in {f.name for f in fields(cls)} - {"extras"}},
         )
 
 
@@ -71,6 +77,8 @@ class ConceptDAG:
     # Insertion order of node ids; used as the tie-breaker so topological order
     # is deterministic and remedial insertions land where they were spliced in.
     _order: list[str] = field(default_factory=list)
+    #: Unknown keys at the dag level of state.json, preserved verbatim.
+    extras: dict = field(default_factory=dict)
 
     # -- construction -----------------------------------------------------
 
@@ -214,7 +222,7 @@ class ConceptDAG:
     # -- persistence ------------------------------------------------------
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "nodes": [self.nodes[nid].to_dict() for nid in self._order],
             "edges": sorted(
                 [parent, child]
@@ -222,6 +230,8 @@ class ConceptDAG:
                 for parent in self._parents[child]
             ),
         }
+        data.update(self.extras)
+        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "ConceptDAG":
@@ -230,6 +240,7 @@ class ConceptDAG:
             dag.add_node(ConceptNode.from_dict(node_data))
         for parent, child in data.get("edges", []):
             dag.add_edge(parent, child)
+        dag.extras = {k: v for k, v in data.items() if k not in ("nodes", "edges")}
         return dag
 
 
