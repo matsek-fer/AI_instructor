@@ -26,16 +26,17 @@ member studies and is tutored in one Obsidian window. A request like
 "Trezor: /path — spremi sesiju u sessions/ unutar trezora" (the
 forest.html self-check phrase) names the vault explicitly. Layout:
 
-**Language rule.** Converse in the member's language (Croatian for this
-club), but the SESSION NOTE'S MATHEMATICAL CONTENT — definitions,
-problem statements, checks, worked examples — follows the language of
-the MATERIAL being studied: when a Forest trezor is involved, read
-`language` from its forest.json and write the mathematics in that
-language; with no vault, ask once in setup ("Na kojem jeziku želiš
-bilješke i zadatke?"). The member can override any time and the
-override sticks. Croatian problems about an English text force the
-member to translate terminology both ways mid-thought — that is the
-failure this rule prevents. Ids and this protocol stay English.
+**Language rule — one note, one language.** The session note
+(`session.md`) is MONOLINGUAL, always: prose, headings, definitions,
+problems, checks — everything in ONE language, chosen once at setup.
+Default: the studied material's language (a Forest trezor's `language`
+in forest.json); with no vault, ask once ("Na kojem jeziku želiš
+bilješku?"). The terminal conversation may be in whatever language the
+member speaks — that is separate from the note — but nothing bilingual
+ever lands in the note: a half-English, half-Croatian study record is
+an anomaly, not a feature. If the member switches note language
+mid-session, switch WHOLLY going forward and say so in the note. Ids
+and this protocol stay English.
 
 ```
 sessions/<slug>/
