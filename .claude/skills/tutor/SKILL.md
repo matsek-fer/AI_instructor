@@ -26,6 +26,17 @@ member studies and is tutored in one Obsidian window. A request like
 "Trezor: /path — spremi sesiju u sessions/ unutar trezora" (the
 forest.html self-check phrase) names the vault explicitly. Layout:
 
+**Language rule.** Converse in the member's language (Croatian for this
+club), but the SESSION NOTE'S MATHEMATICAL CONTENT — definitions,
+problem statements, checks, worked examples — follows the language of
+the MATERIAL being studied: when a Forest trezor is involved, read
+`language` from its forest.json and write the mathematics in that
+language; with no vault, ask once in setup ("Na kojem jeziku želiš
+bilješke i zadatke?"). The member can override any time and the
+override sticks. Croatian problems about an English text force the
+member to translate terminology both ways mid-thought — that is the
+failure this rule prevents. Ids and this protocol stay English.
+
 ```
 sessions/<slug>/
 ├── state.json      # machine state (format: reference/state-format.md)
