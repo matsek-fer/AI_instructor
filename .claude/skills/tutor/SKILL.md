@@ -18,7 +18,13 @@ Style, always in force:
 
 ## Session files — the note IS the UI
 
-Sessions live in `sessions/<slug>/` in the project root:
+Sessions live in `sessions/<slug>/` — by default in the project root,
+BUT: if the working directory (or a directory the member names, e.g. a
+Forest trezor whose root holds `forest.json`) is a Knowledge-Forest
+vault, write the session into `<vault>/sessions/<slug>/` instead, so the
+member studies and is tutored in one Obsidian window. A request like
+"Trezor: /path — spremi sesiju u sessions/ unutar trezora" (the
+forest.html self-check phrase) names the vault explicitly. Layout:
 
 ```
 sessions/<slug>/
