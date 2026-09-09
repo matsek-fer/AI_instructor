@@ -1,10 +1,12 @@
 {
   "name": "tutor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Autonomous AI tutor: probe → plan → teach, with a live Obsidian-compatible session log. Run /tutor to start.",
   "author": {
     "name": "Matematička sekcija FER",
     "url": "https://github.com/matsek-fer"
   },
-  "skills": ["./.claude/skills/tutor"]
+  "skills": [
+    "./.claude/skills/tutor"
+  ]
 }
